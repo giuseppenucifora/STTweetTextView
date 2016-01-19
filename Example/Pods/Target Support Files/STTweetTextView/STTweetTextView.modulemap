@@ -1,0 +1,6 @@
+framework module STTweetTextView {
+  umbrella header "STTweetTextView-umbrella.h"
+
+  export *
+  module * { export * }
+}
