@@ -55,27 +55,27 @@
 }
 
 - (id)initWithCoder:(NSCoder *)coder {
-
+    
     self = [super initWithCoder:coder];
     if (self) {
         [self setupLabel];
         [self setupTextView];
         [self setupURLRegularExpression];
     }
-
+    
     return self;
 }
 
 
 - (void)setupTextView {
-
+    
     _textStorage   = [NSTextStorage new];
     _layoutManager = [NSLayoutManager new];
     _textContainer = [[NSTextContainer alloc] initWithSize:CGSizeMake(self.frame.size.width, CGFLOAT_MAX)];
-
+    
     [_layoutManager addTextContainer:_textContainer];
     [_textStorage addLayoutManager:_layoutManager];
-
+    
     _textView = [[UITextView alloc] initWithFrame:self.bounds textContainer:_textContainer];
     _textView.delegate                          = self;
     _textView.autoresizingMask                  = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
@@ -95,7 +95,7 @@
 }
 
 - (void)setupURLRegularExpression {
-
+    
     NSError *regexError = nil;
     self.urlRegex = [NSRegularExpression regularExpressionWithPattern:STURLRegex options:0 error:&regexError];
 }
@@ -125,14 +125,14 @@
     @try {
         [_textStorage removeAttribute:NSBackgroundColorAttributeName range:_selectableRange];
     } @catch (NSException *exception) {
-        NSLogDebug(@"%@", exception);
+        NSLog(@"%@", exception);
     }
 }
 
 #pragma mark - Setup
 
 - (void)setupLabel {
-
+    
     // Set the basic properties
     [self setBackgroundColor:[UIColor clearColor]];
     [self setClipsToBounds:NO];
@@ -157,32 +157,32 @@
     // Need a text
     if (_cleanText == nil)
         return;
-
+    
     NSMutableString *tmpText = [[NSMutableString alloc] initWithString:_cleanText];
-
+    
     // Support RTL
     if (!_leftToRight) {
         tmpText = [[NSMutableString alloc] init];
         [tmpText appendString:@"\u200F"];
         [tmpText appendString:_cleanText];
     }
-
+    
     // Define a character set for hot characters (@ handle, # hashtag)
     NSString *hotCharacters = @"@#";
     NSCharacterSet *hotCharactersSet = [NSCharacterSet characterSetWithCharactersInString:hotCharacters];
-
+    
     // Define a character set for the complete world (determine the end of the hot word)
     NSMutableCharacterSet *validCharactersSet = [NSMutableCharacterSet alphanumericCharacterSet];
     [validCharactersSet removeCharactersInString:@"!@#$%^&*()-={[]}|;:',<>.?/"];
     [validCharactersSet addCharactersInString:@"_"];
-
+    
     _rangesOfHotWords = [[NSMutableArray alloc] init];
-
+    
     while ([tmpText rangeOfCharacterFromSet:hotCharactersSet].location < tmpText.length) {
         NSRange range = [tmpText rangeOfCharacterFromSet:hotCharactersSet];
-
+        
         STTweetHotWord hotWord;
-
+        
         switch ([tmpText characterAtIndex:range.location]) {
             case '@':
                 hotWord = STTweetHandle;
@@ -194,36 +194,36 @@
                 hotWord = STTweetText;
                 break;
         }
-
+        
         [tmpText replaceCharactersInRange:range withString:@"%"];
         // If the hot character is not preceded by a alphanumeric characater, ie email (sebastien@world.com)
         if (range.location > 0 && [validCharactersSet characterIsMember:[tmpText characterAtIndex:range.location - 1]])
             continue;
-
+        
         // Determine the length of the hot word
         int length = (int)range.length;
-
+        
         while (range.location + length < tmpText.length) {
             BOOL charIsMember = [validCharactersSet characterIsMember:[tmpText characterAtIndex:range.location + length]];
-
+            
             if (charIsMember)
                 length++;
             else
                 break;
         }
-
+        
         // Register the hot word and its range
         if (length > 1)
             [_rangesOfHotWords addObject:@{@"hotWord": @(hotWord), @"range": [NSValue valueWithRange:NSMakeRange(range.location, length)]}];
     }
-
+    
     [self determineLinks];
     [self updateText];
 }
 
 - (void)determineLinks {
     NSMutableString *tmpText = [[NSMutableString alloc] initWithString:_cleanText];
-
+    
     [self.urlRegex enumerateMatchesInString:tmpText options:0 range:NSMakeRange(0, tmpText.length) usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
         NSString *protocol     = @"http";
         NSString *link         = [tmpText substringWithRange:result.range];
@@ -231,29 +231,29 @@
         if (protocolRange.location != NSNotFound) {
             protocol = [link substringToIndex:protocolRange.location];
         }
-
+        
         if ([_validProtocols containsObject:protocol.lowercaseString]) {
             [_rangesOfHotWords addObject:@{ @"hotWord"  : @(STTweetLink),
                                             @"protocol" : protocol,
                                             @"range"    : [NSValue valueWithRange:result.range]
-            }];
+                                            }];
         }
     }];
 }
 
 - (void)updateText {
     [_textStorage beginEditing];
-
+    
     NSAttributedString *attributedString = _cleanAttributedText ?: [[NSMutableAttributedString alloc] initWithString:_cleanText];
     [_textStorage setAttributedString:attributedString];
     [_textStorage setAttributes:_attributesText range:NSMakeRange(0, attributedString.length)];
-
+    
     for (NSDictionary *dictionary in _rangesOfHotWords)  {
         NSRange range = [dictionary[@"range"] rangeValue];
         STTweetHotWord hotWord = (STTweetHotWord)[dictionary[@"hotWord"] intValue];
         [_textStorage setAttributes:[self attributesForHotWord:hotWord] range:range];
     }
-
+    
     [_textStorage endEditing];
 }
 
@@ -262,7 +262,7 @@
 - (CGSize)suggestedFrameSizeToFitEntireStringConstrainedToWidth:(CGFloat)width {
     if (_cleanText == nil)
         return CGSizeZero;
-
+    
     return [_textView sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)];
 }
 
@@ -309,7 +309,7 @@
         copy[NSForegroundColorAttributeName] = self.textColor;
         attributes = [NSDictionary dictionaryWithDictionary:copy];
     }
-
+    
     _attributesText = attributes;
     
     [self determineHotWords];
@@ -350,7 +350,7 @@
 
 - (void)setLeftToRight:(BOOL)leftToRight {
     _leftToRight = leftToRight;
-
+    
     [self determineHotWords];
 }
 
@@ -388,10 +388,10 @@
     switch (hotWord) {
         case STTweetHandle:
             return _attributesHandle;
-
+            
         case STTweetHashtag:
             return _attributesHashtag;
-
+            
         case STTweetLink:
             return _attributesLink;
         case STTweetText:
@@ -439,7 +439,7 @@
     if (![_textView isFirstResponder]) {
         [_textView becomeFirstResponder];
     }
- 
+    
 }
 
 - (NSInteger)charIndexAtLocation:(CGPoint)touchLocation {
@@ -454,17 +454,17 @@
 
 - (id)getTouchedHotword:(NSSet *)touches {
     NSInteger charIndex = [self charIndexAtLocation:[[touches anyObject] locationInView:_textView]];
-
+    
     if (charIndex != NSNotFound) {
         for (id obj in _rangesOfHotWords) {
             NSRange range = [[obj objectForKey:@"range"] rangeValue];
-
+            
             if (charIndex >= range.location && charIndex < range.location + range.length) {
                 return obj;
             }
         }
     }
-
+    
     return nil;
 }
 
